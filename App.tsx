@@ -1,0 +1,90 @@
+import React, { useState, useCallback } from 'react';
+import { ImageUploader } from './components/ImageUploader';
+import { StyleSelector } from './components/StyleSelector';
+import { ResultDisplay } from './components/ResultDisplay';
+import { Header } from './components/Header';
+import { GenerateButton } from './components/GenerateButton';
+import { STYLES } from './constants';
+import { generatePortrait } from './services/geminiService';
+import type { Style } from './types';
+
+const App: React.FC = () => {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<Style | null>(null);
+  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFileSelect = (file: File) => {
+    setSelectedFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGenerateClick = useCallback(async () => {
+    if (!selectedFile || !selectedStyle) {
+      setError('Пожалуйста, загрузите фото и выберите стиль.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setGeneratedImage(null);
+
+    try {
+      const imageUrl = await generatePortrait(selectedFile, selectedStyle.prompt);
+      setGeneratedImage(imageUrl);
+    } catch (err) {
+      console.error(err);
+      setError('Не удалось создать портрет. Попробуйте еще раз.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [selectedFile, selectedStyle]);
+
+  return (
+    <div className="min-h-screen w-full text-gray-200 font-sans flex flex-col">
+      <Header />
+      <main className="flex-grow container mx-auto p-4 md:p-8 overflow-y-auto">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
+          {/* Controls Column */}
+          <div className="flex flex-col gap-8 bg-black/20 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-2xl shadow-black/40">
+            <div>
+              <h2 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-teal-300 to-cyan-400">1. Загрузите ваше фото</h2>
+              <ImageUploader onFileSelect={handleFileSelect} imagePreview={imagePreview} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-teal-300 to-cyan-400">2. Выберите стиль</h2>
+              <StyleSelector 
+                styles={STYLES} 
+                selectedStyle={selectedStyle} 
+                onSelectStyle={setSelectedStyle} 
+              />
+            </div>
+            <GenerateButton 
+              onClick={handleGenerateClick} 
+              isLoading={isLoading} 
+              isDisabled={!selectedFile || !selectedStyle}
+            />
+          </div>
+
+          {/* Result Column */}
+          <div className="flex flex-col bg-black/20 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-2xl shadow-black/40">
+            <h2 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-teal-300 to-cyan-400">3. Результат</h2>
+            <ResultDisplay 
+              isLoading={isLoading}
+              error={error}
+              imageUrl={generatedImage}
+            />
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default App;
