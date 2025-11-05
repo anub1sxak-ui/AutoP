@@ -40,7 +40,11 @@ const App: React.FC = () => {
       setGeneratedImage(imageUrl);
     } catch (err) {
       console.error(err);
-      setError('Не удалось создать портрет. Попробуйте еще раз.');
+      if (err instanceof Error) {
+        setError(`Ошибка: ${err.message}`);
+      } else {
+        setError('Не удалось создать портрет. Произошла неизвестная ошибка.');
+      }
     } finally {
       setIsLoading(false);
     }
