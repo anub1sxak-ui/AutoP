@@ -8,6 +8,7 @@ const fileToGenerativePart = async (file: File) => {
         resolve(reader.result.split(',')[1]);
       } else {
         // Fallback for ArrayBuffer case, though less common with readAsDataURL
+        // Fix: Corrected typo from UintArray to Uint8Array.
         const arr = new Uint8Array(reader.result as ArrayBuffer);
         const b64 = btoa(String.fromCharCode.apply(null, Array.from(arr)));
         resolve(b64);
@@ -25,11 +26,11 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // FIX: Switched from import.meta.env to process.env.API_KEY to fix TypeScript error and adhere to coding guidelines.
+  // Fix: Per coding guidelines, the API key must be obtained from process.env.API_KEY.
   const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
-    // FIX: Updated the error message to refer to the correct environment variable.
+    // Fix: Updated error message to point to the correct environment variable name.
     throw new Error("Ключ API не найден. Убедитесь, что переменная окружения API_KEY правильно настроена.");
   }
   
