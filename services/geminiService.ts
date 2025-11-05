@@ -24,7 +24,7 @@ const fileToGenerativePart = async (file: File) => {
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
   // FIX: Use `process.env.API_KEY` as required by the coding guidelines. This also resolves the TypeScript error `Property 'env' does not exist on type 'ImportMeta'`.
-  const apiKey = process.env.API_KEY;
+  const apiKey = import.meta.env.VITE_API_KEY;
 
   if (!apiKey) {
     // FIX: Updated error message to reference the correct environment variable.
