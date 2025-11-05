@@ -27,15 +27,8 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // FIX: Adhering to guidelines to use process.env.API_KEY for the API key.
-  const apiKey = process.env.API_KEY;
-
-  if (!apiKey) {
-    // FIX: Updated error message to reflect the correct environment variable.
-    throw new Error("Ключ API не найден. Убедитесь, что переменная API_KEY правильно настроена в переменных окружения вашего хостинга (например, Vercel).");
-  }
-
-  const ai = new GoogleGenAI({ apiKey });
+  // Fix: Per coding guidelines, API key must be obtained from process.env.API_KEY.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const imagePart = await fileToGenerativePart(imageFile);
   
   const response = await ai.models.generateContent({
