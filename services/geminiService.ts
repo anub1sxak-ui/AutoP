@@ -27,8 +27,16 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // Fix: Per coding guidelines, API key must be obtained from process.env.API_KEY.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // FIX: Use `process.env.API_KEY` as per the coding guidelines. This also resolves the `import.meta.env` error.
+  const apiKey = process.env.API_KEY;
+  
+  if (!apiKey) {
+    throw new Error(
+      "Ключ API не найден. Убедитесь, что переменная окружения API_KEY установлена."
+    );
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   const imagePart = await fileToGenerativePart(imageFile);
   
   const response = await ai.models.generateContent({
