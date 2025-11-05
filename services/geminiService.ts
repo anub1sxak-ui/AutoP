@@ -23,16 +23,17 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // Fix: Per coding guidelines, API key must be read from process.env.API_KEY.
-  if (!process.env.API_KEY) {
-    // Fix: Updated error message to reflect the correct environment variable.
+  // FIX: Use `process.env.API_KEY` as required by the coding guidelines. This also resolves the TypeScript error `Property 'env' does not exist on type 'ImportMeta'`.
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey) {
+    // FIX: Updated error message to reference the correct environment variable.
     throw new Error(
       "Ключ API не найден. Убедитесь, что переменная API_KEY правильно настроена в переменных окружения."
     );
   }
 
-  // Fix: Per coding guidelines, initialize with process.env.API_KEY directly.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey });
   const imagePart = await fileToGenerativePart(imageFile);
   
   const response = await ai.models.generateContent({
