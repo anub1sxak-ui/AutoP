@@ -84,7 +84,7 @@ export const STYLES: Style[] = [
     id: 'gotham_noir',
     name: 'Вселенная Бэтмена',
     prompt: 'Dark Gotham-style portrait inspired by Batman universe. The uploaded person appears as a character from Gotham City — moody urban background, rain, neon reflections, cinematic lighting, dramatic shadows on face, heroic yet mysterious expression. Realistic rendering.',
-    previewImage: '/images/styles/готэ.png'
+    previewImage: '/images/styles/готэм.png'
   },
   {
     id: 'wednesday_addams',
@@ -96,7 +96,7 @@ export const STYLES: Style[] = [
     id: 'comic_marvel',
     name: 'Комикс / Marvel',
     prompt: 'Comic book hero portrait, dynamic shading, bold lines, cinematic feel',
-    previewImage: '/images/styles/Комикс Marvel.png'
+    previewImage: '/images/styles/Комикс  Marvel.png'
   },
   {
     id: 'gta_game',
@@ -115,7 +115,7 @@ export const STYLES: Style[] = [
     id: 'gangster_30s',
     name: 'Гангстерские 30-е',
     prompt: '1930s American gangster-style portrait, inspired by noir movies and vintage photography. The uploaded person is dressed in a classic suit and fedora hat, dim smoky bar or street background, sepia film tone, moody shadows, dramatic expression. Old Chicago / Prohibition era atmosphere.',
-    previewImage: '/images/styles/30e.png'
+    previewImage: '/images/styles/30е.png'
   },
   {
     id: 'cuban_havana',
@@ -183,7 +183,7 @@ export const STYLES: Style[] = [
     id: 'studio_vogue',
     name: 'Студия / Vogue',
     prompt: 'High-fashion studio portrait, perfect lighting, glossy skin, Vogue style',
-    previewImage: '/images/styles/Студия Vogue.png'
+    previewImage: '/images/styles/Студия  Vogue.png'
   },
   {
     id: 'cinematic_realism',
