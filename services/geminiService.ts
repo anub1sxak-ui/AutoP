@@ -1,18 +1,20 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 
 const fileToGenerativePart = async (file: File) => {
-  const base64EncodedDataPromise = new Promise<string>((resolve) => {
+  const base64EncodedDataPromise = new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onloadend = () => {
       if (typeof reader.result === 'string') {
         resolve(reader.result.split(',')[1]);
-      } else {
-        // Fallback for ArrayBuffer case, though less common with readAsDataURL
-        const arr = new Uint8Array(reader.result as ArrayBuffer);
+      } else if (reader.result instanceof ArrayBuffer) {
+        const arr = new Uint8Array(reader.result);
         const b64 = btoa(String.fromCharCode.apply(null, Array.from(arr)));
         resolve(b64);
+      } else {
+        reject(new Error("Не удалось прочитать файл"));
       }
     };
+    reader.onerror = (error) => reject(error);
     reader.readAsDataURL(file);
   });
 
@@ -25,10 +27,15 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // FIX: Per coding guidelines, the API key must be obtained exclusively from process.env.API_KEY.
-  // The original code was using import.meta.env.VITE_API_KEY which caused the TypeScript error
-  // "Property 'env' does not exist on type 'ImportMeta'" and did not follow the guidelines.
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  // FIX: Per coding guidelines, the API key must be obtained from process.env.API_KEY.
+  const apiKey = process.env.API_KEY;
+
+  if (!apiKey) {
+    // FIX: Updated error message for the correct environment variable.
+    throw new Error("Ключ API не найден. Убедитесь, что переменная API_KEY правильно настроена в переменных окружения.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
   const imagePart = await fileToGenerativePart(imageFile);
   
   const response = await ai.models.generateContent({
@@ -46,7 +53,7 @@ export const generatePortrait = async (imageFile: File, prompt: string): Promise
     },
   });
 
-  // Use optional chaining to safely access nested properties.
+  // Используем опциональную цепочку для безопасного доступа к вложенным свойствам.
   for (const part of response.candidates?.[0]?.content?.parts ?? []) {
     if (part.inlineData) {
       const base64ImageBytes: string = part.inlineData.data;
@@ -55,6 +62,6 @@ export const generatePortrait = async (imageFile: File, prompt: string): Promise
     }
   }
 
-  // A more specific error if no image is returned
+  // Более конкретная ошибка, если изображение не возвращено
   throw new Error("Изображение не было сгенерировано в ответе AI. Возможно, сработали фильтры безопасности.");
 };
