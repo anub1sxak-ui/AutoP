@@ -8,7 +8,6 @@ const fileToGenerativePart = async (file: File) => {
         resolve(reader.result.split(',')[1]);
       } else {
         // Fallback for ArrayBuffer case, though less common with readAsDataURL
-        // Fix: Corrected typo from UintArray to Uint8Array.
         const arr = new Uint8Array(reader.result as ArrayBuffer);
         const b64 = btoa(String.fromCharCode.apply(null, Array.from(arr)));
         resolve(b64);
@@ -26,15 +25,10 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // Fix: Per coding guidelines, the API key must be obtained from process.env.API_KEY.
-  const apiKey = process.env.API_KEY;
-
-  if (!apiKey) {
-    // Fix: Updated error message to point to the correct environment variable name.
-    throw new Error("Ключ API не найден. Убедитесь, что переменная окружения API_KEY правильно настроена.");
-  }
-  
-  const ai = new GoogleGenAI({ apiKey });
+  // FIX: Per coding guidelines, the API key must be obtained exclusively from process.env.API_KEY.
+  // The original code was using import.meta.env.VITE_API_KEY which caused the TypeScript error
+  // "Property 'env' does not exist on type 'ImportMeta'" and did not follow the guidelines.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const imagePart = await fileToGenerativePart(imageFile);
   
   const response = await ai.models.generateContent({
