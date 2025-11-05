@@ -25,8 +25,7 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // FIX: The error is caused by using Vite-specific `import.meta.env`.
-  // Per the coding guidelines, the API key must be retrieved from `process.env.API_KEY`.
+  // FIX: Switched from import.meta.env to process.env.API_KEY to fix TypeScript error and adhere to coding guidelines.
   const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
