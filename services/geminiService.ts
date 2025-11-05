@@ -25,13 +25,13 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // Fix: Per coding guidelines, the API key must be retrieved from `process.env.API_KEY`.
-  // This also resolves the TypeScript error "Property 'env' does not exist on type 'ImportMeta'".
+  // FIX: The error is caused by using Vite-specific `import.meta.env`.
+  // Per the coding guidelines, the API key must be retrieved from `process.env.API_KEY`.
   const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
-    // Fix: Updated error message to align with the new API key source.
-    throw new Error("Ключ API не найден. Убедитесь, что переменная окружения API_KEY настроена.");
+    // FIX: Updated the error message to refer to the correct environment variable.
+    throw new Error("Ключ API не найден. Убедитесь, что переменная окружения API_KEY правильно настроена.");
   }
   
   const ai = new GoogleGenAI({ apiKey });
