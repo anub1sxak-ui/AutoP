@@ -25,13 +25,13 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // FIX: Per coding guidelines, the API key must be retrieved from `process.env.API_KEY`.
-  // This also resolves the TypeScript error `Property 'env' does not exist on type 'ImportMeta'`.
+  // Fix: Per coding guidelines, the API key must be retrieved from `process.env.API_KEY`.
+  // This also resolves the TypeScript error "Property 'env' does not exist on type 'ImportMeta'".
   const apiKey = process.env.API_KEY;
 
   if (!apiKey) {
-    // A more specific error message for easier debugging.
-    throw new Error("Ключ API не найден. Убедитесь, что переменная окружения 'API_KEY' установлена.");
+    // Fix: Updated error message to align with the new API key source.
+    throw new Error("Ключ API не найден. Убедитесь, что переменная окружения API_KEY настроена.");
   }
   
   const ai = new GoogleGenAI({ apiKey });
@@ -52,6 +52,7 @@ export const generatePortrait = async (imageFile: File, prompt: string): Promise
     },
   });
 
+  // Use optional chaining to safely access nested properties.
   for (const part of response.candidates?.[0]?.content?.parts ?? []) {
     if (part.inlineData) {
       const base64ImageBytes: string = part.inlineData.data;
