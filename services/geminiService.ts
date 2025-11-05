@@ -6,12 +6,8 @@ const fileToGenerativePart = async (file: File) => {
     reader.onloadend = () => {
       if (typeof reader.result === 'string') {
         resolve(reader.result.split(',')[1]);
-      } else if (reader.result instanceof ArrayBuffer) {
-        const arr = new Uint8Array(reader.result);
-        const b64 = btoa(String.fromCharCode.apply(null, Array.from(arr)));
-        resolve(b64);
       } else {
-        reject(new Error("Не удалось прочитать файл"));
+        reject(new Error("Не удалось прочитать файл как base64"));
       }
     };
     reader.onerror = (error) => reject(error);
@@ -27,16 +23,16 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // FIX: Use `process.env.API_KEY` as per the coding guidelines. This also resolves the `import.meta.env` error.
-  const apiKey = process.env.API_KEY;
-  
-  if (!apiKey) {
+  // Fix: Per coding guidelines, API key must be read from process.env.API_KEY.
+  if (!process.env.API_KEY) {
+    // Fix: Updated error message to reflect the correct environment variable.
     throw new Error(
-      "Ключ API не найден. Убедитесь, что переменная окружения API_KEY установлена."
+      "Ключ API не найден. Убедитесь, что переменная API_KEY правильно настроена в переменных окружения."
     );
   }
 
-  const ai = new GoogleGenAI({ apiKey });
+  // Fix: Per coding guidelines, initialize with process.env.API_KEY directly.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const imagePart = await fileToGenerativePart(imageFile);
   
   const response = await ai.models.generateContent({
@@ -54,7 +50,6 @@ export const generatePortrait = async (imageFile: File, prompt: string): Promise
     },
   });
 
-  // Используем опциональную цепочку для безопасного доступа к вложенным свойствам.
   for (const part of response.candidates?.[0]?.content?.parts ?? []) {
     if (part.inlineData) {
       const base64ImageBytes: string = part.inlineData.data;
@@ -63,6 +58,5 @@ export const generatePortrait = async (imageFile: File, prompt: string): Promise
     }
   }
 
-  // Более конкретная ошибка, если изображение не возвращено
   throw new Error("Изображение не было сгенерировано в ответе AI. Возможно, сработали фильтры безопасности.");
 };
