@@ -11,9 +11,24 @@ export const ImageUploader: React.FC<ImageUploaderProps> = ({ onFileSelect, imag
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      onFileSelect(file);
+    if (!file) return;
+
+    const isValidType = /^(image\/png|image\/jpeg)$/.test(file.type);
+    const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+
+    if (!isValidType) {
+      window.alert('Поддерживаются только PNG и JPG.');
+      event.target.value = '';
+      return;
     }
+
+    if (!isValidSize) {
+      window.alert('Размер файла превышает 10 МБ.');
+      event.target.value = '';
+      return;
+    }
+
+    onFileSelect(file);
   };
 
   const handleClick = () => {

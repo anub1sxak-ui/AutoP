@@ -23,13 +23,12 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // FIX: Use `process.env.API_KEY` as required by the coding guidelines. This also resolves the TypeScript error `Property 'env' does not exist on type 'ImportMeta'`.
-  const apiKey = import.meta.env.VITE_API_KEY;
+  // Vite injects this at build time via define() in vite.config.ts
+  const apiKey = (process.env.GEMINI_API_KEY as string | undefined) || (process.env.API_KEY as string | undefined);
 
   if (!apiKey) {
-    // FIX: Updated error message to reference the correct environment variable.
     throw new Error(
-      "Ключ API не найден. Убедитесь, что переменная API_KEY правильно настроена в переменных окружения."
+      "Ключ API не найден. Укажите GEMINI_API_KEY в переменных окружения (.env.local или Vercel env)."
     );
   }
 
