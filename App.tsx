@@ -5,6 +5,7 @@ import { ResultDisplay } from './components/ResultDisplay';
 import { Header } from './components/Header';
 import { GenerateButton } from './components/GenerateButton';
 import { CustomStyleModal } from './components/CustomStyleModal';
+import { PromptEnhancer } from './components/PromptEnhancer';
 import { STYLES } from './constants';
 import { generatePortrait } from './services/geminiService';
 import type { Style } from './types';
@@ -15,6 +16,7 @@ const App: React.FC = () => {
   const [selectedStyle, setSelectedStyle] = useState<Style | null>(null);
   const [customStyle, setCustomStyle] = useState<Style | null>(null);
   const [isCustomModalOpen, setIsCustomModalOpen] = useState<boolean>(false);
+  const [additionalPrompt, setAdditionalPrompt] = useState<string>('');
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,7 +60,14 @@ const App: React.FC = () => {
     setGeneratedImage(null);
 
     try {
-      const imageUrl = await generatePortrait(selectedFile, selectedStyle.prompt);
+      // Объединяем основной промпт стиля с дополнительным промптом
+      let finalPrompt = selectedStyle.prompt;
+      if (additionalPrompt.trim()) {
+        // Добавляем дополнительный промпт к основному
+        finalPrompt = `${selectedStyle.prompt}. Additional requirements: ${additionalPrompt.trim()}`;
+      }
+      
+      const imageUrl = await generatePortrait(selectedFile, finalPrompt);
       setGeneratedImage(imageUrl);
     } catch (err) {
       console.error(err);
@@ -70,7 +79,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedFile, selectedStyle]);
+  }, [selectedFile, selectedStyle, additionalPrompt]);
 
   return (
     <div className="min-h-screen w-full text-gray-200 font-sans flex flex-col">
@@ -93,6 +102,13 @@ const App: React.FC = () => {
                 hasCustomStyle={customStyle !== null}
               />
             </div>
+            <div>
+              <h2 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-teal-300 to-cyan-400">3. Дополнительные детали</h2>
+              <PromptEnhancer 
+                value={additionalPrompt}
+                onChange={setAdditionalPrompt}
+              />
+            </div>
             <GenerateButton 
               onClick={handleGenerateClick} 
               isLoading={isLoading} 
@@ -102,7 +118,7 @@ const App: React.FC = () => {
 
           {/* Result Column */}
           <div className="flex flex-col bg-black/20 backdrop-blur-xl p-6 rounded-2xl border border-white/10 shadow-2xl shadow-black/40">
-            <h2 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-teal-300 to-cyan-400">3. Результат</h2>
+            <h2 className="text-2xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-teal-300 to-cyan-400">4. Результат</h2>
             <ResultDisplay 
               isLoading={isLoading}
               error={error}
