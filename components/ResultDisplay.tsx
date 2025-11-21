@@ -8,14 +8,39 @@ interface ResultDisplayProps {
 }
 
 export const ResultDisplay: React.FC<ResultDisplayProps> = ({ isLoading, error, imageUrl }) => {
+  const buildDownloadUrl = (source: string): { url: string; revoke: (() => void) | null } => {
+    if (!source.startsWith('data:')) {
+      return { url: source, revoke: null };
+    }
+
+    const [header, base64Payload] = source.split(',');
+    if (!header || !base64Payload) {
+      return { url: source, revoke: null };
+    }
+
+    const mimeMatch = header.match(/^data:(.*?);base64$/);
+    const mimeType = mimeMatch?.[1] ?? 'application/octet-stream';
+    const binary = atob(base64Payload);
+    const bytes = new Uint8Array(binary.length);
+
+    for (let i = 0; i < binary.length; i += 1) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+
+    const objectUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+    return { url: objectUrl, revoke: () => URL.revokeObjectURL(objectUrl) };
+  };
+
   const handleDownload = () => {
     if (!imageUrl) return;
+    const { url, revoke } = buildDownloadUrl(imageUrl);
     const link = document.createElement('a');
-    link.href = imageUrl;
+    link.href = url;
     link.download = `ai_portrait_${Date.now()}.png`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    revoke?.();
   };
   
   const renderContent = () => {

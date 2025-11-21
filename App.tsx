@@ -16,14 +16,25 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleFileSelect = (file: File) => {
+  const resetResultState = useCallback(() => {
+    setGeneratedImage(null);
+    setError(null);
+  }, []);
+
+  const handleFileSelect = useCallback((file: File) => {
+    resetResultState();
     setSelectedFile(file);
     const reader = new FileReader();
     reader.onloadend = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
-  };
+  }, [resetResultState]);
+
+  const handleStyleSelect = useCallback((style: Style) => {
+    resetResultState();
+    setSelectedStyle(style);
+  }, [resetResultState]);
 
   const handleGenerateClick = useCallback(async () => {
     if (!selectedFile || !selectedStyle) {
@@ -66,7 +77,7 @@ const App: React.FC = () => {
               <StyleSelector 
                 styles={STYLES} 
                 selectedStyle={selectedStyle} 
-                onSelectStyle={setSelectedStyle} 
+                onSelectStyle={handleStyleSelect} 
               />
             </div>
             <GenerateButton 
