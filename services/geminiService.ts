@@ -23,8 +23,8 @@ const fileToGenerativePart = async (file: File) => {
 };
 
 export const generatePortrait = async (imageFile: File, prompt: string): Promise<string> => {
-  // Vite injects this at build time via define() in vite.config.ts
-  const apiKey = (process.env.GEMINI_API_KEY as string | undefined) || (process.env.API_KEY as string | undefined);
+  // Vite injects this at build time - use import.meta.env for client-side env vars
+  const apiKey = (import.meta.env.GEMINI_API_KEY as string | undefined) || (import.meta.env.VITE_GEMINI_API_KEY as string | undefined);
 
   if (!apiKey) {
     throw new Error(
