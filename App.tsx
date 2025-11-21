@@ -4,6 +4,7 @@ import { StyleSelector } from './components/StyleSelector';
 import { ResultDisplay } from './components/ResultDisplay';
 import { Header } from './components/Header';
 import { GenerateButton } from './components/GenerateButton';
+import { CustomStyleModal } from './components/CustomStyleModal';
 import { STYLES } from './constants';
 import { generatePortrait } from './services/geminiService';
 import type { Style } from './types';
@@ -12,6 +13,8 @@ const App: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<Style | null>(null);
+  const [customStyle, setCustomStyle] = useState<Style | null>(null);
+  const [isCustomModalOpen, setIsCustomModalOpen] = useState<boolean>(false);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,6 +26,25 @@ const App: React.FC = () => {
       setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleCustomStyleSave = (prompt: string) => {
+    const newCustomStyle: Style = {
+      id: 'custom',
+      name: 'CUSTOM',
+      prompt: prompt,
+      previewImage: '/images/styles/placeholder.svg'
+    };
+    setCustomStyle(newCustomStyle);
+    setSelectedStyle(newCustomStyle);
+  };
+
+  const handleCustomClick = () => {
+    setIsCustomModalOpen(true);
+  };
+
+  const handleSelectStyle = (style: Style) => {
+    setSelectedStyle(style);
   };
 
   const handleGenerateClick = useCallback(async () => {
@@ -66,7 +88,9 @@ const App: React.FC = () => {
               <StyleSelector 
                 styles={STYLES} 
                 selectedStyle={selectedStyle} 
-                onSelectStyle={setSelectedStyle} 
+                onSelectStyle={handleSelectStyle}
+                onCustomClick={handleCustomClick}
+                hasCustomStyle={customStyle !== null}
               />
             </div>
             <GenerateButton 
@@ -87,6 +111,11 @@ const App: React.FC = () => {
           </div>
         </div>
       </main>
+      <CustomStyleModal
+        isOpen={isCustomModalOpen}
+        onClose={() => setIsCustomModalOpen(false)}
+        onSave={handleCustomStyleSave}
+      />
     </div>
   );
 };
