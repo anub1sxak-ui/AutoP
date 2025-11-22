@@ -1,0 +1,18 @@
+{
+  "parameters": {
+    "operation": "extractText",
+    "binaryPropertyName": "data",
+    "options": {
+      "extractTables": true,
+      "extractImages": false
+    }
+  },
+  "id": "extract-pdf",
+  "name": "Extract PDF Text",
+  "type": "n8n-nodes-base.extractPdf",
+  "typeVersion": 1,
+  "position": [
+    850,
+    300
+  ]
+}

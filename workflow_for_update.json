@@ -1,0 +1,255 @@
+{
+  "name": "PDF Lenses Price Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "telegram-pdf-lenses-analyzer"
+    },
+    {
+      "parameters": {
+        "operation": "getFile",
+        "fileId": "={{ $json.message.document.file_id }}"
+      },
+      "id": "get-telegram-file",
+      "name": "Get Telegram File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "filePath": "={{ $json.file_path }}"
+      },
+      "id": "download-file",
+      "name": "Download PDF File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Подготовка PDF данных для передачи в AI Agent\n// AI может работать с base64 данными или напрямую анализировать PDF\nconst binaryData = $input.item.binary?.data;\n\nif (!binaryData) {\n  throw new Error('PDF данные не найдены в бинарных данных');\n}\n\n// Получаем base64 строку\nlet base64String;\nif (typeof binaryData === 'string') {\n  base64String = binaryData;\n} else if (binaryData.data) {\n  base64String = binaryData.data;\n} else {\n  // Конвертируем Buffer в base64\n  base64String = Buffer.from(binaryData).toString('base64');\n}\n\n// Возвращаем данные для передачи в AI Agent\n// AI будет анализировать PDF через API или напрямую\nreturn [{\n  json: {\n    pdf_base64: base64String,\n    pdf_mime_type: 'application/pdf',\n    file_name: $input.item.json?.file_name || 'document.pdf',\n    message: 'PDF файл готов к анализу. Base64 данные переданы для обработки.'\n  },\n  binary: {\n    data: binaryData\n  }\n}];"
+      },
+      "id": "extract-pdf",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты — профессиональный «Анализатор прайсов на линзы для очков».\nТвоя задача — проанализировать текст из PDF файла прайса и извлечь ВСЕ данные о линзах структурированно, даже если прайс выглядит хаотично.\n\nНА ВХОД ТЕБЕ ПЕРЕДАЮТ:\n- Текст и таблицы, извлеченные из PDF файла прайса на линзы\n- Данные могут быть в хаотичном виде: таблицы, списки, смешанный формат, без четкой структуры\n- В прайсе обычно от 50 до 200 позиций\n\nТВОЯ ЗАДАЧА:\n1. Внимательно проанализировать ВСЕ данные в прайсе, даже если они выглядят неструктурированно\n2. Для КАЖДОЙ позиции линз извлечь следующие данные:\n   - brand (бренд/производитель) - если указан\n   - model_name (название модели) - обязательно найти\n   - material (материал: пластик, стекло, поликарбонат и т.д.)\n   - index (индекс преломления, например 1.5, 1.6, 1.67 и т.д.)\n   - coating (покрытие: антиблик, защита от синего света, фотохром и т.д.)\n   - diameter (диаметр линзы в мм)\n   - sphere_min (минимальная сфера, например -10.0)\n   - sphere_max (максимальная сфера, например +6.0)\n   - cylinder_max (максимальный цилиндр, например -4.0)\n   - is_stigmatic_only (только астигматические, true/false)\n   - color_options (варианты цветов, массив строк, например [\"прозрачный\", \"серый\", \"коричневый\"])\n   - category (категория: однофокальные, прогрессивные, мультифокальные, компьютерные и т.д.)\n   - add_power (аддидация для прогрессивных/мультифокальных, например +1.5, +2.0)\n   - price (цена, число без валюты)\n   - is_new (новинка, true/false)\n   - discount_allowed (скидка разрешена, по умолчанию true)\n   - warehouse_moscow_available (наличие на складе в Москве, true/false)\n   - warehouse_factory_available (наличие на заводе, true/false)\n   - catalog_page (страница в каталоге, если указана)\n   - raw_text (оригинальный текст строки/позиции из прайса для этой линзы)\n\n3. Форматировать ответ строго в виде JSON массива:\n{\n  \"items\": [\n    {\n      \"brand\": \"\",\n      \"model_name\": \"\",\n      \"material\": \"\",\n      \"index\": \"\",\n      \"coating\": \"\",\n      \"diameter\": \"\",\n      \"sphere_min\": \"\",\n      \"sphere_max\": \"\",\n      \"cylinder_max\": \"\",\n      \"is_stigmatic_only\": false,\n      \"color_options\": [],\n      \"category\": \"\",\n      \"add_power\": \"\",\n      \"price\": \"\",\n      \"is_new\": false,\n      \"discount_allowed\": true,\n      \"warehouse_moscow_available\": false,\n      \"warehouse_factory_available\": false,\n      \"catalog_page\": \"\",\n      \"raw_text\": \"\"\n    }\n  ]\n}\n\nПРАВИЛА:\n- Если какое-то поле отсутствует в прайсе, используй:\n  * Пустую строку \"\" для текстовых полей\n  * false для булевых полей (кроме discount_allowed - по умолчанию true)\n  * Пустой массив [] для color_options\n  * Пустую строку \"\" для числовых полей, если значение не найдено\n- НЕ выдумывай значения, которых нет в прайсе\n- Для price извлекай только число, без валюты и символов\n- Для index, diameter, sphere_min, sphere_max, cylinder_max, add_power извлекай числа как строки (например \"1.6\", \"70\", \"-10.0\")\n- Для is_stigmatic_only, is_new, warehouse_moscow_available, warehouse_factory_available используй true только если явно указано в прайсе\n- discount_allowed по умолчанию true, если не указано обратное\n- color_options - массив строк, даже если один цвет ([\"прозрачный\"])\n- raw_text - сохраняй оригинальный текст позиции из прайса полностью, это важно для идентификации\n- Если в прайсе есть группировка или разделы, обрабатывай все позиции из всех разделов\n- Если данные разбросаны по нескольким строкам/ячейкам, объединяй их в одну позицию\n\nВАЖНО:\n- Обрабатывай ВСЕ позиции из прайса, даже если структура неочевидна\n- Используй контекст и логику для определения значений полей\n- Если цена указана в разных форматах, нормализуй её (убирай пробелы, запятые как разделители тысяч)\n- raw_text должен содержать достаточно информации для уникальной идентификации позиции\n\nФИНАЛ:\nВозвращай только валидный JSON массив items без лишнего текста — он пойдёт в Google Sheets.",
+        "options": {
+          "systemMessage": "=You are a professional lens price list analyzer. Extract ALL lens data from the provided text, even if the price list looks chaotic. Return structured JSON with all items. Be precise and don't invent data."
+        }
+      },
+      "id": "ai-agent",
+      "name": "AI Agent - Lenses Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [
+        1050,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Парсинг JSON ответа от AI и подготовка данных для Google Sheets\nconst aiResponse = $input.item.json.output || $input.item.json.text || $input.item.json.message?.content || '';\n\n// Извлекаем JSON из ответа (может быть обернут в markdown или текст)\nlet jsonData;\ntry {\n  // Пытаемся найти JSON в ответе\n  const jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    jsonData = JSON.parse(jsonMatch[0]);\n  } else {\n    jsonData = JSON.parse(aiResponse);\n  }\n} catch (error) {\n  throw new Error(`Ошибка парсинга JSON: ${error.message}. Ответ AI: ${aiResponse.substring(0, 500)}`);\n}\n\n// Подготовка данных для записи в Google Sheets\nconst items = jsonData.items || [];\nconst processedAt = new Date().toISOString();\n\n// Преобразуем каждый элемент в строку для таблицы\nconst rows = items.map((item, index) => {\n  return {\n    json: {\n      'Дата обработки': processedAt,\n      'Бренд': item.brand || '',\n      'Название модели': item.model_name || '',\n      'Материал': item.material || '',\n      'Индекс': item.index || '',\n      'Покрытие': item.coating || '',\n      'Диаметр': item.diameter || '',\n      'Сфера мин': item.sphere_min || '',\n      'Сфера макс': item.sphere_max || '',\n      'Цилиндр макс': item.cylinder_max || '',\n      'Только астигматические': item.is_stigmatic_only || false,\n      'Варианты цветов': Array.isArray(item.color_options) ? item.color_options.join(', ') : '',\n      'Категория': item.category || '',\n      'Аддидация': item.add_power || '',\n      'Цена': item.price || '',\n      'Новинка': item.is_new || false,\n      'Скидка разрешена': item.discount_allowed !== undefined ? item.discount_allowed : true,\n      'Склад Москва': item.warehouse_moscow_available || false,\n      'Склад завод': item.warehouse_factory_available || false,\n      'Страница каталога': item.catalog_page || '',\n      'Исходный текст': item.raw_text || ''\n    }\n  };\n});\n\nreturn rows;"
+      },
+      "id": "process-data",
+      "name": "Process Data for Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Дата обработки": "={{ $json['Дата обработки'] }}",
+            "Бренд": "={{ $json['Бренд'] }}",
+            "Название модели": "={{ $json['Название модели'] }}",
+            "Материал": "={{ $json['Материал'] }}",
+            "Индекс": "={{ $json['Индекс'] }}",
+            "Покрытие": "={{ $json['Покрытие'] }}",
+            "Диаметр": "={{ $json['Диаметр'] }}",
+            "Сфера мин": "={{ $json['Сфера мин'] }}",
+            "Сфера макс": "={{ $json['Сфера макс'] }}",
+            "Цилиндр макс": "={{ $json['Цилиндр макс'] }}",
+            "Только астигматические": "={{ $json['Только астигматические'] }}",
+            "Варианты цветов": "={{ $json['Варианты цветов'] }}",
+            "Категория": "={{ $json['Категория'] }}",
+            "Аддидация": "={{ $json['Аддидация'] }}",
+            "Цена": "={{ $json['Цена'] }}",
+            "Новинка": "={{ $json['Новинка'] }}",
+            "Скидка разрешена": "={{ $json['Скидка разрешена'] }}",
+            "Склад Москва": "={{ $json['Склад Москва'] }}",
+            "Склад завод": "={{ $json['Склад завод'] }}",
+            "Страница каталога": "={{ $json['Страница каталога'] }}",
+            "Исходный текст": "={{ $json['Исходный текст'] }}"
+          }
+        },
+        "options": {
+          "useAppend": false,
+          "columnToMatchOn": "Исходный текст"
+        }
+      },
+      "id": "write-to-sheets",
+      "name": "Write to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [
+        1450,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "log-entry",
+              "name": "log_data",
+              "value": "={{ {\n  \"timestamp\": new Date().toISOString(),\n  \"workflow\": \"PDF Lenses Price Analyzer\",\n  \"execution_id\": $execution.id,\n  \"telegram_file_id\": $('Telegram Trigger').item.json.message.document.file_id,\n  \"file_name\": $('Telegram Trigger').item.json.message.document.file_name,\n  \"items_processed\": $('Process Data for Sheets').all().length,\n  \"status\": \"success\"\n} }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-success",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1650,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Telegram File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Telegram File": {
+      "main": [
+        [
+          {
+            "node": "Download PDF File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF File": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Lenses Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Lenses Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Process Data for Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Data for Sheets": {
+      "main": [
+        [
+          {
+            "node": "Write to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveExecutionProgress": true,
+    "saveDataErrorExecution": "all",
+    "saveDataSuccessExecution": "all",
+    "callerPolicy": "workflowsFromSameOwner",
+    "availableInMCP": false
+  }
+}

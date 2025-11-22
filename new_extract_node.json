@@ -1,0 +1,10 @@
+{
+  "parameters": {
+    "jsCode": "// Подготовка PDF данных для передачи в AI Agent\n// AI может работать с base64 данными или напрямую анализировать PDF\nconst binaryData = $input.item.binary?.data;\n\nif (!binaryData) {\n  throw new Error('PDF данные не найдены в бинарных данных');\n}\n\n// Получаем base64 строку\nlet base64String;\nif (typeof binaryData === 'string') {\n  base64String = binaryData;\n} else if (binaryData.data) {\n  base64String = binaryData.data;\n} else {\n  // Конвертируем Buffer в base64\n  base64String = Buffer.from(binaryData).toString('base64');\n}\n\n// Возвращаем данные для передачи в AI Agent\n// AI будет анализировать PDF через API или напрямую\nreturn [{\n  json: {\n    pdf_base64: base64String,\n    pdf_mime_type: 'application/pdf',\n    file_name: $input.item.json?.file_name || 'document.pdf',\n    message: 'PDF файл готов к анализу. Base64 данные переданы для обработки.'\n  },\n  binary: {\n    data: binaryData\n  }\n}];"
+  },
+  "id": "extract-pdf",
+  "name": "Extract PDF Text",
+  "type": "n8n-nodes-base.code",
+  "typeVersion": 2,
+  "position": [850, 300]
+}
