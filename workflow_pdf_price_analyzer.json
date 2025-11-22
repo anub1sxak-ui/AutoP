@@ -1,0 +1,219 @@
+{
+  "name": "PDF Price Analyzer - Lenses",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ]
+      },
+      "id": "telegram-trigger",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [250, 300],
+      "webhookId": "telegram-pdf-price-analyzer"
+    },
+    {
+      "parameters": {
+        "operation": "getFile",
+        "fileId": "={{ $json.message.document.file_id }}"
+      },
+      "id": "get-telegram-file",
+      "name": "Get Telegram File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "filePath": "={{ $json.file_path }}"
+      },
+      "id": "download-file",
+      "name": "Download PDF File",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "extractText",
+        "binaryPropertyName": "data",
+        "options": {
+          "extractTables": true,
+          "extractImages": false
+        }
+      },
+      "id": "extract-pdf",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractPdf",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Ты — профессиональный «Анализатор прайсов на линзы».\nТвоя задача — проанализировать текст из PDF файла прайса и извлечь все данные о линзах структурированно.\n\nНА ВХОД ТЕБЕ ПЕРЕДАЮТ:\n- Текст и таблицы, извлеченные из PDF файла прайса на линзы\n- Данные могут быть в разных форматах: таблицы, списки, смешанный формат\n\nТВОЯ ЗАДАЧА:\n1. Определить структуру прайса (таблица, список, смешанный)\n2. Извлечь данные по каждой позиции линз:\n   - Название/модель линзы\n   - Артикул/SKU (если есть)\n   - Производитель/бренд\n   - Цена розничная (если есть)\n   - Цена оптовая (если есть)\n   - Материал (пластик, стекло, поликарбонат и т.д.)\n   - Покрытие (антиблик, защита от синего света, фотохром и т.д.)\n   - Индекс преломления (если указан)\n   - Диаметр (если указан)\n   - Категория (однофокальные, прогрессивные, мультифокальные, компьютерные и т.д.)\n   - Наличие/остатки (если указано)\n   - Дополнительные характеристики\n3. Форматировать ответ строго в виде JSON массива:\n{\n  \"items\": [\n    {\n      \"name\": \"Название линзы\",\n      \"article\": \"Артикул или пустая строка\",\n      \"manufacturer\": \"Производитель или пустая строка\",\n      \"price_retail\": 0,\n      \"price_wholesale\": 0,\n      \"material\": \"Материал или пустая строка\",\n      \"coating\": \"Покрытие или пустая строка\",\n      \"refractive_index\": 0,\n      \"diameter\": 0,\n      \"category\": \"Категория или пустая строка\",\n      \"stock\": \"Наличие или пустая строка\",\n      \"notes\": \"Дополнительная информация или пустая строка\"\n    }\n  ],\n  \"metadata\": {\n    \"total_items\": 0,\n    \"source_file\": \"price_list.pdf\"\n  }\n}\n\nПРАВИЛА:\n- Если какое-то поле отсутствует, используй пустую строку для текста или 0 для чисел\n- Не выдумывай значения, которых нет в прайсе\n- Если цена указана в одной валюте, сохраняй как есть\n- Если есть несколько цен (розничная/оптовая), извлекай обе\n- Категорию определяй по описанию или характеристикам\n- Для числовых значений (цены, индекс, диаметр) используй числа, не строки\n- Если в прайсе есть группировка (по производителям, категориям), сохраняй эту информацию в поле category или manufacturer\n\nФИНАЛ:\nВозвращай только валидный JSON без лишнего текста — он пойдёт в Google Sheets.",
+        "options": {
+          "systemMessage": "=You are a professional price list analyzer. Extract all lens data from the provided text and return structured JSON. Be precise and don't invent data."
+        }
+      },
+      "id": "ai-agent",
+      "name": "AI Agent - Price Analyzer",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.7,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Парсинг JSON ответа от AI и подготовка данных для Google Sheets\nconst aiResponse = $input.item.json.output || $input.item.json.text || $input.item.json.message?.content || '';\n\n// Извлекаем JSON из ответа (может быть обернут в markdown или текст)\nlet jsonData;\ntry {\n  // Пытаемся найти JSON в ответе\n  const jsonMatch = aiResponse.match(/\\{[\\s\\S]*\\}/);\n  if (jsonMatch) {\n    jsonData = JSON.parse(jsonMatch[0]);\n  } else {\n    jsonData = JSON.parse(aiResponse);\n  }\n} catch (error) {\n  throw new Error(`Ошибка парсинга JSON: ${error.message}. Ответ AI: ${aiResponse.substring(0, 200)}`);\n}\n\n// Подготовка данных для записи в Google Sheets\nconst items = jsonData.items || [];\nconst processedAt = new Date().toISOString();\n\n// Преобразуем каждый элемент в строку для таблицы\nconst rows = items.map((item, index) => {\n  return {\n    json: {\n      'Дата обработки': processedAt,\n      'Название линзы': item.name || '',\n      'Артикул': item.article || '',\n      'Производитель': item.manufacturer || '',\n      'Цена розничная': item.price_retail || 0,\n      'Цена оптовая': item.price_wholesale || 0,\n      'Материал': item.material || '',\n      'Покрытие': item.coating || '',\n      'Индекс преломления': item.refractive_index || 0,\n      'Диаметр': item.diameter || 0,\n      'Категория': item.category || '',\n      'Наличие': item.stock || '',\n      'Примечания': item.notes || ''\n    }\n  };\n});\n\nreturn rows;"
+      },
+      "id": "process-data",
+      "name": "Process Data for Sheets",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "list"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Дата обработки": "={{ $json['Дата обработки'] }}",
+            "Название линзы": "={{ $json['Название линзы'] }}",
+            "Артикул": "={{ $json['Артикул'] }}",
+            "Производитель": "={{ $json['Производитель'] }}",
+            "Цена розничная": "={{ $json['Цена розничная'] }}",
+            "Цена оптовая": "={{ $json['Цена оптовая'] }}",
+            "Материал": "={{ $json['Материал'] }}",
+            "Покрытие": "={{ $json['Покрытие'] }}",
+            "Индекс преломления": "={{ $json['Индекс преломления'] }}",
+            "Диаметр": "={{ $json['Диаметр'] }}",
+            "Категория": "={{ $json['Категория'] }}",
+            "Наличие": "={{ $json['Наличие'] }}",
+            "Примечания": "={{ $json['Примечания'] }}"
+          }
+        },
+        "options": {
+          "useAppend": true
+        }
+      },
+      "id": "write-to-sheets",
+      "name": "Write to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.3,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=✅ Прайс успешно обработан!\n\n📊 Обработано позиций: {{ $('Process Data for Sheets').item.json.length || 0 }}\n📅 Дата: {{ new Date().toLocaleString('ru-RU') }}\n\nДанные сохранены в Google Sheets."
+      },
+      "id": "send-notification",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1650, 300]
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Telegram File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Telegram File": {
+      "main": [
+        [
+          {
+            "node": "Download PDF File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download PDF File": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Price Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Price Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Process Data for Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Data for Sheets": {
+      "main": [
+        [
+          {
+            "node": "Write to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0
+}
