@@ -1,0 +1,87 @@
+{
+  "name": "Portrait Generator API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portrait-generate",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "portrait-generator-webhook"
+    },
+    {
+      "parameters": {
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={{ $env.GEMINI_API_KEY }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [\n      {\n        \"inlineData\": {\n          \"data\": \"{{ $json.body.image }}\",\n          \"mimeType\": \"image/jpeg\"\n        }\n      },\n      {\n        \"text\": \"{{ 'Portrait of the uploaded person, ' + $json.body.prompt }}\"\n      }\n    ]\n  }],\n  \"generationConfig\": {\n    \"responseModalities\": [\"IMAGE\"]\n  }\n}",
+        "options": {}
+      },
+      "id": "gemini-api",
+      "name": "Gemini API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"image\": \"data:{{ $json.candidates[0].content.parts[0].inlineData.mimeType }};base64,{{ $json.candidates[0].content.parts[0].inlineData.data }}\",\n  \"mimeType\": \"{{ $json.candidates[0].content.parts[0].inlineData.mimeType }}\"\n}",
+        "options": {}
+      },
+      "id": "respond",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [650, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Gemini API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gemini API Call": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-11-22T12:00:00.000Z",
+  "versionId": "1"
+}
